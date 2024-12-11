@@ -13,7 +13,7 @@ use ratatui::{
 fn main() -> io::Result<()> {
     let mut terminal = ratatui::init();
     terminal.clear()?;
-    let app_result = draw(terminal);
+    let app_result = draw(terminal); 
     ratatui::restore();
     app_result
 }
