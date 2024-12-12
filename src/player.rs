@@ -19,6 +19,7 @@ pub enum Lure {
     Large, // picks largest fish possible out of the 3 rolls
     Efficient, // 25% chance to not subtract bait when fishing
     Sparkling, // picks highest tier fish out of the 3 rolls, 25% chance to consume extra bait
+    //test
 }
 #[derive (PartialEq)]
 pub enum Bait {
