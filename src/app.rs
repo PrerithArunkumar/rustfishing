@@ -1,18 +1,17 @@
 use std::{
-    io, 
+    io,
     collections::HashMap,
-    time::{Duration, Instant}
+    time::{Duration, Instant},
 };
 use ratatui::{
     crossterm::event::{self, KeyCode, KeyEventKind},
     style::Stylize,
     widgets::Paragraph,
     DefaultTerminal,
-    Frame
+    Frame,
 };
 use rand_distr::{Normal, Distribution};
 use rand::{seq::SliceRandom, distributions::Alphanumeric, Rng};
-
 
 use crate::fish::*;
 use crate::fish::FreshwaterFish::*;
@@ -20,10 +19,11 @@ use crate::fish::SaltwaterFish::*;
 use crate::player::*;
 
 pub struct App {
-    exit:bool,
-    scene: CurrentScene,
-    player: Player
+    pub exit: bool,
+    pub scene: CurrentScene,
+    pub player: Player,
 }
+
 impl App {
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
@@ -32,13 +32,72 @@ impl App {
         }
         Ok(())
     }
-    fn draw(&self, frame: &mut Frame) {
-        todo!()
-    }
 
-    fn handle_events(&mut self) -> io::Result<()> {
-        todo!()
+    pub fn draw(&mut self, frame: &mut Frame) {
+        match self.scene {
+            CurrentScene::MainMenu => {
+                let text = Paragraph::new("Main Menu (l: Lake, b: Beach, s: Shop, i: Inventory, q: Quit)").white().on_blue();
+                frame.render_widget(text, frame.size());
+            }
+            CurrentScene::Shop(ShopScenes::Base) => {
+                let text = Paragraph::new("Shop (x: Buy, y: Sell, m: Main Menu)").white().on_blue();
+                frame.render_widget(text, frame.size());
+            }
+            CurrentScene::Shop(ShopScenes::Buy) => {
+                let text = Paragraph::new("Shop - Buy (m: Main Menu)").white().on_blue();
+                frame.render_widget(text, frame.size());
+            }
+            CurrentScene::Shop(ShopScenes::Sell) => {
+                let text = Paragraph::new("Shop - Sell (m: Main Menu)").white().on_blue();
+                frame.render_widget(text, frame.size());
+            }
+            CurrentScene::Lake(Lake::Lake) => {
+                let text = Paragraph::new("Lake (f: Fish, m: Main Menu)").white().on_blue();
+                frame.render_widget(text, frame.size());
+            }
+            CurrentScene::Lake(Lake::Minigame) => {
+                self.fishing_minigame().expect("Failed to run fishing minigame");
+            }
+            CurrentScene::Beach(Beach::Beach) => {
+                let text = Paragraph::new("Beach (f: Fish, m: Main Menu)").white().on_blue();
+                frame.render_widget(text, frame.size());
+            }
+            CurrentScene::Beach(Beach::Minigame) => {
+                self.fishing_minigame().expect("Failed to run fishing minigame");
+            }
+            CurrentScene::Inventory => {
+                let text = Paragraph::new(format!("Inventory: {} fish (m: Main Menu)", self.player.inventory.len())).white().on_blue();
+                frame.render_widget(text, frame.size());
+            }
+        }
     }
+    
+
+    pub fn handle_events(&mut self) -> io::Result<()> {
+        if let event::Event::Key(key) = event::read()? {
+            match key.kind {
+                KeyEventKind::Press => match key.code {
+                    KeyCode::Char('q') => self.exit = true,
+                    KeyCode::Char('s') => self.scene = CurrentScene::Shop(ShopScenes::Base),
+                    KeyCode::Char('x') => self.scene = CurrentScene::Shop(ShopScenes::Buy),
+                    KeyCode::Char('y') => self.scene = CurrentScene::Shop(ShopScenes::Sell),
+                    KeyCode::Char('l') => self.scene = CurrentScene::Lake(Lake::Lake),
+                    KeyCode::Char('f') => match self.scene {
+                        CurrentScene::Lake(Lake::Lake) => self.scene = CurrentScene::Lake(Lake::Minigame),
+                        CurrentScene::Beach(Beach::Beach) => self.scene = CurrentScene::Beach(Beach::Minigame),
+                        _ => {},
+                    },
+                    KeyCode::Char('b') => self.scene = CurrentScene::Beach(Beach::Beach),
+                    KeyCode::Char('i') => self.scene = CurrentScene::Inventory,
+                    KeyCode::Char('m') => self.scene = CurrentScene::MainMenu,
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+    
     pub fn fishing_minigame(&mut self) -> io::Result<bool> {
         let fish = generate_fish(&self.player, &self.scene).unwrap();
         let difficulty: f64 = fish.get_size_mult() * (fish.get_tier().clone() as f64) * (fish.get_size()/1000.0).ceil();
@@ -82,18 +141,33 @@ impl App {
         }
         if fish_caught {
             self.player.inventory.push(fish);
+            
+            if self.player.lure == Lure::Efficient {
+                if rand::random::<f64>() > 0.25 {
+                    if let Some(count) = self.player.bait.get_mut(&self.player.current_bait) {
+                        *count -= 1;
+                    }
+                }
+            } else {
+                if let Some(count) = self.player.bait.get_mut(&self.player.current_bait) {
+                    *count -= 1;
+                }
+            }
             return Ok(true);
         }
         Ok(false)
+        
     }
 }
 pub enum CurrentScene {
+    MainMenu,
     Shop(ShopScenes),
     Lake(Lake),
     Beach(Beach),
     Inventory,
 }
 pub enum ShopScenes {
+    Base,
     Buy,
     Sell,
 }
