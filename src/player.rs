@@ -19,10 +19,26 @@ pub enum Lure {
     Large, // picks largest fish possible out of the 3 rolls
     Efficient, // 25% chance to not subtract bait when fishing
     Sparkling, // picks highest tier fish out of the 3 rolls, 25% chance to consume extra bait
+    //test
 }
-#[derive (PartialEq)]
+#[derive (PartialEq, Eq, Hash, Debug, Clone)]
 pub enum Bait {
     Worm,
     Leech,
     Minnow,
+}
+impl Player {
+    pub fn new() -> Self {
+        Self {
+            lure: Lure::Basic,
+            lures: vec![Lure::Basic],
+            rod_tier: 1,
+            catch_chance: 0.5,
+            bait_capacity: 10,
+            bait: HashMap::new(),
+            current_bait: Bait::Worm,
+            money: 100,
+            inventory: Vec::new(),
+        }
+    }
 }
