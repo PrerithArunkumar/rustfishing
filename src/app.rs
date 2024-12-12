@@ -28,7 +28,7 @@ impl App {
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
-            self.handle_events()?;
+            self.handle_events(terminal)?;
         }
         Ok(())
     }
@@ -56,14 +56,18 @@ impl App {
                 frame.render_widget(text, frame.size());
             }
             CurrentScene::Lake(Lake::Minigame) => {
-                self.fishing_minigame().expect("Failed to run fishing minigame");
+                let text = Paragraph::new("Fishing Minigame in Progress (Press 'm' to go back to Main Menu)").white().on_blue();
+                frame.render_widget(text, frame.size());
+                self.fishing_minigame(frame).expect("Failed to run fishing minigame");
             }
             CurrentScene::Beach(Beach::Beach) => {
                 let text = Paragraph::new("Beach (f: Fish, m: Main Menu)").white().on_blue();
                 frame.render_widget(text, frame.size());
             }
             CurrentScene::Beach(Beach::Minigame) => {
-                self.fishing_minigame().expect("Failed to run fishing minigame");
+                let text = Paragraph::new("Fishing Minigame in Progress (Press 'm' to go back to Main Menu)").white().on_blue();
+                frame.render_widget(text, frame.size());
+                self.fishing_minigame(frame).expect("Failed to run fishing minigame");
             }
             CurrentScene::Inventory => {
                 let text = Paragraph::new(format!("Inventory: {} fish (m: Main Menu)", self.player.inventory.len())).white().on_blue();
@@ -71,9 +75,8 @@ impl App {
             }
         }
     }
-    
 
-    pub fn handle_events(&mut self) -> io::Result<()> {
+    pub fn handle_events(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         if let event::Event::Key(key) = event::read()? {
             match key.kind {
                 KeyEventKind::Press => match key.code {
@@ -97,12 +100,12 @@ impl App {
         }
         Ok(())
     }
-    
-    pub fn fishing_minigame(&mut self) -> io::Result<bool> {
+
+    pub fn fishing_minigame(&mut self, frame: &mut Frame) -> io::Result<bool> {
         let fish = generate_fish(&self.player, &self.scene).unwrap();
-        let difficulty: f64 = fish.get_size_mult() * (fish.get_tier().clone() as f64) * (fish.get_size()/1000.0).ceil();
+        let difficulty: f64 = fish.get_size_mult() * (fish.get_tier().clone() as f64) * (fish.get_size() / 1000.0).ceil();
         let char_count = 2 * difficulty.round() as i32;
-        let emojis= Vec::from(['🐟','🐡','🐠','🦈','🎣']);
+        let emojis = Vec::from(['🐟', '🐡', '🐠', '🦈', '🎣']);
         let challenge_word: String = rand::thread_rng().sample_iter(&Alphanumeric).take(char_count as usize).map(char::from).collect();
         let hidden = '▮';
         let mut hidden_chars = 0;
@@ -110,6 +113,7 @@ impl App {
         let start_time = Instant::now();
         let time_per_char = 4 - fish.get_tier().clone();
         let mut fish_caught = false;
+
         loop {
             hidden_chars = Instant::now().duration_since(start_time).as_secs() as i32 / time_per_char;
             let mut text = String::from("");
@@ -118,19 +122,28 @@ impl App {
                 text.push(hidden);
                 text.push(emojis.choose(&mut rand::thread_rng()).unwrap().clone());
             }
-            for i in hidden_chars..char_count{
+            for i in hidden_chars..char_count {
                 text.push(challenge_word.chars().nth(i as usize).unwrap().clone());
                 text.push(emojis.choose(&mut rand::thread_rng()).unwrap().clone());
             }
-            if let event::Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char(c) => player_word.push(c),
-                        KeyCode::Backspace => if player_word.len() > 0 { player_word.pop(); },
-                        _ => {},
+
+            // Draw the minigame state
+            self.draw_fishing_minigame(frame, &text, &player_word)?;
+
+            if let Ok(event) = event::poll(Duration::from_millis(100)) {
+                if event {
+                    if let event::Event::Key(key) = event::read()? {
+                        if key.kind == KeyEventKind::Press {
+                            match key.code {
+                                KeyCode::Char(c) => player_word.push(c),
+                                KeyCode::Backspace => { player_word.pop(); },
+                                _ => {},
+                            }
+                        }
                     }
                 }
             }
+
             if player_word == challenge_word {
                 fish_caught = true;
                 break;
@@ -139,9 +152,10 @@ impl App {
                 break;
             }
         }
+
         if fish_caught {
             self.player.inventory.push(fish);
-            
+
             if self.player.lure == Lure::Efficient {
                 if rand::random::<f64>() > 0.25 {
                     if let Some(count) = self.player.bait.get_mut(&self.player.current_bait) {
@@ -155,10 +169,24 @@ impl App {
             }
             return Ok(true);
         }
+
         Ok(false)
-        
+    }
+
+    fn draw_fishing_minigame(&mut self, frame: &mut Frame, text: &str, player_word: &str) -> io::Result<()> {
+        let text_widget = Paragraph::new(text)
+            .white()
+            .on_blue();
+        frame.render_widget(text_widget, frame.size());
+
+        let player_widget = Paragraph::new(player_word)
+            .white()
+            .on_blue();
+        frame.render_widget(player_widget, frame.size());
+        Ok(())
     }
 }
+
 pub enum CurrentScene {
     MainMenu,
     Shop(ShopScenes),
@@ -166,15 +194,18 @@ pub enum CurrentScene {
     Beach(Beach),
     Inventory,
 }
+
 pub enum ShopScenes {
     Base,
     Buy,
     Sell,
 }
+
 pub enum Lake {
     Lake,
     Minigame,
 }
+
 pub enum Beach {
     Beach,
     Minigame,
@@ -253,8 +284,8 @@ pub fn generate_fish(player: &Player, scene: &CurrentScene) -> Result<Fish, Stri
         let species:FishSpecies;
 
         match &scene {
-            CurrentScene::Lake(crate::app::Lake::Lake) => species = FishSpecies::Freshwater(freshwater_tiers[&tier].choose(&mut rand::thread_rng()).unwrap().clone()),
-            CurrentScene::Beach(crate::app::Beach::Beach) => species = FishSpecies::Saltwater(saltwater_tiers[&tier].choose(&mut rand::thread_rng()).unwrap().clone()),
+            CurrentScene::Lake(crate::app::Lake::Minigame) => species = FishSpecies::Freshwater(freshwater_tiers[&tier].choose(&mut rand::thread_rng()).unwrap().clone()),
+            CurrentScene::Beach(crate::app::Beach::Minigame) => species = FishSpecies::Saltwater(saltwater_tiers[&tier].choose(&mut rand::thread_rng()).unwrap().clone()),
             _ => return Err("Invalid Scene".to_string()),
         };
         let value = sell_value[&species];

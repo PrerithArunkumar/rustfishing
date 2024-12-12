@@ -24,7 +24,7 @@ fn main() -> io::Result<()> {
 
     while !app.exit {
         terminal.draw(|frame| app.draw(frame))?;
-        app.handle_events()?;
+        app.handle_events(&mut terminal)?;
     }
     app.run(&mut terminal)?;
     ratatui::restore();
