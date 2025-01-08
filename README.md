@@ -1,9 +1,9 @@
 # rustfishing
 Rustfishing: a terminal-based fishing game in rust
 #### Group Members:
-Prerith Arunkumar, prerith2
+Prerith Arunkumar, UIN: prerith2
 
-Evan Wang, evan13
+Evan Wang, UIN: evan13
 
 
 #### Project Introduction
