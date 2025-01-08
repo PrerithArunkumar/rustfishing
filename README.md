@@ -1,8 +1,10 @@
 # rustfishing
 Rustfishing: a terminal-based fishing game in rust
 #### Group Members:
-Evan Wang, evan13
 Prerith Arunkumar, prerith2
+
+Evan Wang, evan13
+
 
 #### Project Introduction
 Rustfishing is a terminal-based fishing game roughly inspired by the indie game Webfishing. The gameplay loop is simple: catch and sell fish to buy upgrades to your fishing rod, hook, and bait, which in turn will let you catch bigger and rarer fish. There is no end goal, although there will be a super rare fish that will serve as the "endgame" point if reached. We wanted to make this because we thought it would be a fun yet challenging way to apply everything we've learned in CS 128H so far. 
